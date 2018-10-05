@@ -3,7 +3,6 @@
 #include <deque>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <type_traits>
 #include <utility>
 #include <observable/subscription.hpp>
@@ -29,7 +28,6 @@ public:
     //! \note This method can be safely called in parallel, from multiple threads.
     void eval_all() const
     {
-        std::lock_guard<std::mutex> const lock { data_->mutex };
         for(auto && p : data_->funs)
             p.second();
     }
@@ -50,7 +48,6 @@ private:
     auto insert(ExpressionType * expr)
     {
         assert(expr);
-        std::lock_guard<std::mutex> const lock { data_->mutex };
 
         data_->funs.emplace_back(expr, [=]() { expr->eval(); });
         return id { expr };
@@ -62,8 +59,6 @@ private:
     //! \note This method can be safely called in parallel, from multiple threads.
     void remove(id instance_id)
     {
-        std::lock_guard<std::mutex> const lock { data_->mutex };
-
         auto const it = find_if(begin(data_->funs),
                                 end(data_->funs),
                                 [&](auto && p) { return p.first == instance_id; });
@@ -75,7 +70,6 @@ private:
 private:
     struct data {
         std::deque<std::pair<id, std::function<void()>>> funs;
-        std::mutex mutex;
     };
 
     std::shared_ptr<data> data_ { std::make_shared<data>() };
